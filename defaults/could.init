@@ -1,0 +1,44 @@
+#cloud-config
+
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+
+users:
+- name: extis
+  lock_passwd: true
+  shell: /bin/bash
+  ssh-authorized-keys:
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDfj4MC4ZdFqiXvnxhwbQJWrS0eFsd+GIGs6YfAHMvPaDsQgODQByD+aSnCOb8NjA76SChuokEE+WLSqT7bvn/2LTJ8ATL3I3d4RJ2c9Hne9ATGGDVEKSA1pQ5eXO8RIL+6u0mAzLrUTKPJjVRb1Y87MlIGMvW8A8yZhZNVaIeH7THsXR4yWa44EYMwCWxR2m5Cf3pzlOGRnuF5yxUzSirTuruHT3AsRyCiLL/XQuna+tgFWaasqiVmiO9k/wiiqp/UKPBJLDkFjrV814IgNjrlT5UHT4sh6Pg8w3izcTjBwXyliAwCldxK6E0qZME5avyTvFVoB7kkXYdwSM6N78AH kay@kayp
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDfiv5o74v2lPfXHdbWerNtuDAKsnIn5Bm3TqamvJISQHoRJAHijlYEj5CS0xkKEJnPmZ94WLeOeoWnyhI5oQ0mJPNR9hxWM83iMtqNSBkwq5BYxYPcO2+8WE/Y84FaqIUnrs0K2kunS20KCAEJM3+TQvHn2UJ3yFLkx/4UtBHmZ5SXPuKy0cE0uXzN/7jzpf0MNf5VThZgprt8T8nxD2tMyWXeDVx04hgYvSaGh0fJyc//4YKgyM9m/QWkWPAsyTylEuUzYHCYh7oclJCJntx/4boS3glqQECmhggCM2Za/7Hgms0BSNQI2twScDbjYogStS/+TvRynTBVZveVGdT3 root@Master
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDE98N/qiP/0/4+bAQZf7RiRVFrRaSr4vwgPyAMi6HvlIOkMB0tF+c5ghzv5UABONMUql3Ah6A8/xp5SVmzTjlaDI539lQqmcOFZpFn52yeap0gk6GTKcM0Tvi1AviU3nx4K4cNrLEOJUQXXO3asgCU5zWivBZAhu8YGxcmSD5gN1At98pI07l5/thnLlLhVO8dbTBvCBn1k20sqi+0oeLv3Ukd7JQAcbfF/lWDhDBIFfVIzPxQeMPR0niHlesgLqJZGioe2WYXtT7EQz3OHqzTh9Dbcr/ZxkLnzE1HKx0NRhaEODoS62yq6dau2hPAvYlO97TYnHGS9ffav6vV21dD root@router
+  groups:
+    - ubuntu
+    - docker
+  sudo:
+    - ALL=(ALL) NOPASSWD:ALL
+
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg-agent
+  - software-properties-common
+
+runcmd:
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+  - add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  - apt-get update -y
+  - apt-get install -y docker-ce docker-ce-cli containerd.io
+  - systemctl start docker
+  - systemctl enable docker
+  - mkdir -p /containers/services/proxy
+  - [ curl, -L, "https://github.com/docker/compose/releases/download/1.24.1/docker-compose-Linux-x86_64", -o, /usr/local/bin/docker-compose ]
+  - [ chmod, +x, /usr/local/bin/docker-compose ]
+  - [ wget, "https://kay.sh/patch_docker.sh", -O, /root/patch_docker.sh ]
+  - [ bash, /root/patch_docker.sh ]
+  - git clone git@github.com:Askotion/extis-cloud.git
+  - docker-compose -f extis-cloud/proxy/docker-compose.yml up -d
+  - docker run -d -p 80:80 -e NEXTCLOUD_ADMIN_USER="admin" -e NEXTCLOUD_ADMIN_PASSWORD="admin" -e SQLITE_DATABASE="db" -e NEXTCLOUD_TRUSTED_DOMAINS="schule1.claxss.cloud" -e VIRTUAL_HOST="schule1.claxss.cloud" -e LETSENCRYPT_HOST="schule1.claxss.cloud" -e LETSENCRYPT_EMAIL="webmaster@askoproducts.com" nextcloud
+
+final_message: "The system is finally up, after $UPTIME seconds"
